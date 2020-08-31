@@ -9,37 +9,51 @@ cd /tmp/openh264
 
 sed -i "s*PREFIX=/usr/local*PREFIX=${TARGET_PATH}*g" Makefile
 
-declare -A arch_abis=(
-	["arm"]="armeabi-v7a"
-	["arm64"]="arm64-v8a"
-	["x86"]="x86"
-	["x86_64"]="x86_64"
-)
+# Set architecture && NDK level based on Android target
+if [ "$TARGET_ARCH" == "armeabi" ]; then
+	ARCH="arm APP_ABI=armeabi"
+	NDK_LEVEL="16"
+elif [ "$TARGET_ARCH" == "armeabi-v7a" ]; then
+	ARCH="arm"
+	NDK_LEVEL="16"
+elif [ "$TARGET_ARCH" == "x86" ]; then
+	ARCH="x86"
+	NDK_LEVEL="16"
+elif [ "$TARGET_ARCH" == "x86_64" ]; then
+	ARCH="x86_64"
+	NDK_LEVEL="21"
+elif [ "$TARGET_ARCH" == "arm64-v8a" ]; then
+	ARCH="arm64"
+	NDK_LEVEL="21"
+elif [ "$TARGET_ARCH" == "mips" ]; then
+	ARCH="mips"
+	NDK_LEVEL="21"
+elif [ "$TARGET_ARCH" == "mips64" ]; then
+	ARCH="mips64"
+	NDK_LEVEL="21"
+else
+	echo "Unsupported target ABI: $TARGET_ARCH"
+	exit 1
+fi
 
-declare -A ndk_levels=(
-	["arm"]="16"
-	["arm64"]="21"
-	["x86"]="16"
-	["x86_64"]="21"
-)
+if [ "$ARCH" == "x86" ]; then
+	export ASMFLAGS=-DX86_32_PICASM
+else
+	export ASMFLAGS=
+fi
+if [ "$ARCH" == "arm64" ]; then
+	export LDFLAGS="-L/usr/lib64"
+else
+	export LDFLAGS=
+fi
 
-for arch in arm arm64 x86 x86_64; do
-	echo "*** BUILDING openh264 FOR $arch (${arch_abis[$arch]}) ***"
-	if [ "$arch" == "x86" ]; then
-		export ASMFLAGS=-DX86_32_PICASM
-	else
-		export ASMFLAGS=
-	fi
-	if [ "$arch" == "arm64" ]; then
-		echo "********* LDFLAGS BEFORE: ${LDFLAGS} *********"
-		export LDFLAGS="-L/usr/lib64"
-		echo "********* LDFLAGS AFTER: ${LDFLAGS} *********"
-	fi
-	ARGS="OS=android NDKROOT=/sources/android_ndk TARGET=android-${ndk_levels[$arch]}"
-	ARGS="${ARGS} NDKLEVEL=${ndk_levels[$arch]} ARCH=$arch NDK_TOOLCHAIN_VERSION=clang"
-	/opt/gradle/latest/bin/gradle wrapper
-	make ${ARGS} clean
-	make ${ARGS} install
-done
+ARGS="OS=android ENABLEPIC=Yes NDKROOT=/sources/android_ndk NDKLEVEL=${NDK_LEVEL}"
+ARGS="${ARGS} TARGET=android-${ANDROID_TARGET_API} ARCH=${ARCH} NDK_TOOLCHAIN_VERSION=clang"
+
+echo "*** BUILDING openh264 FOR ${ARCH}. Args: ${ARGS} ***"
+
+/opt/gradle/latest/bin/gradle wrapper
+make ${ARGS} clean
+make ${ARGS} install
 
 rm -rf /tmp/openh264
