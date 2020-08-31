@@ -5,8 +5,11 @@ TARGET_ARCH=$1
 TARGET_PATH=/output/pjsip/${TARGET_ARCH}
 cp -r /sources/pjsip /tmp/pjsip
 
+# Add Swig to PATH
+export PATH="${PATH}:/output/swig/bin"
+
 # TODO: Use flags like in vialerpjsip for config.h
-cat <<EOF > "/tmp/pjsip/pjlib/include/pj/config_site.h"
+cat <<EOF >"/tmp/pjsip/pjlib/include/pj/config_site.h"
 #define PJ_CONFIG_ANDROID 1
 #define PJMEDIA_HAS_G729_CODEC 1
 #define PJMEDIA_HAS_G7221_CODEC 1
@@ -24,10 +27,10 @@ export APP_PLATFORM=android-${ANDROID_TARGET_API}
 export ANDROID_NDK_ROOT=/sources/android_ndk
 
 ./configure-android \
-    --use-ndk-cflags \
-    --with-ssl="/output/openssl/${TARGET_ARCH}" \
-    --with-openh264="/output/openh264/${TARGET_ARCH}" \
-    --with-opus="/output/opus/${TARGET_ARCH}"
+  --use-ndk-cflags \
+  --with-ssl="/output/openssl/${TARGET_ARCH}" \
+  --with-openh264="/output/openh264/${TARGET_ARCH}" \
+  --with-opus="/output/opus/${TARGET_ARCH}"
 
 make dep
 make

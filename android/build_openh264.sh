@@ -9,32 +9,37 @@ cd /tmp/openh264
 
 sed -i "s*PREFIX=/usr/local*PREFIX=${TARGET_PATH}*g" Makefile
 
-ARGS="OS=android ENABLEPIC=Yes NDKROOT=/sources/android_ndk NDKLEVEL=${OPENH264_TARGET_NDK_LEVEL} "
-ARGS="${ARGS}TARGET=android-${ANDROID_TARGET_API} ARCH="
+declare -A arch_abis=(
+	["arm"]="armeabi-v7a"
+	["arm64"]="arm64-v8a"
+	["x86"]="x86"
+	["x86_64"]="x86_64"
+)
 
-if [ "$TARGET_ARCH" == "armeabi" ]
-then
-    ARGS="${ARGS}arm APP_ABI=armeabi"
-elif [ "$TARGET_ARCH" == "armeabi-v7a" ]
-then
-    ARGS="${ARGS}arm"
-elif [ "$TARGET_ARCH" == "x86" ]
-then
-    ARGS="${ARGS}x86"
-elif [ "$TARGET_ARCH" == "x86_64" ]
-then
-    ARGS="${ARGS}x86_64"
-elif [ "$TARGET_ARCH" == "arm64-v8a" ]
-then
-    ARGS="${ARGS}arm64"
-elif [ "$TARGET_ARCH" == "mips" ]
-then
-    ARGS="${ARGS}mips"
-elif [ "$TARGET_ARCH" == "mips64" ]
-then
-    ARGS="${ARGS}mips64"
-fi
+declare -A ndk_levels=(
+	["arm"]="16"
+	["arm64"]="21"
+	["x86"]="16"
+	["x86_64"]="21"
+)
 
-make ${ARGS} install
+for arch in arm arm64 x86 x86_64; do
+	echo "*** BUILDING openh264 FOR $arch (${arch_abis[$arch]}) ***"
+	if [ "$arch" == "x86" ]; then
+		export ASMFLAGS=-DX86_32_PICASM
+	else
+		export ASMFLAGS=
+	fi
+	if [ "$arch" == "arm64" ]; then
+		echo "********* LDFLAGS BEFORE: ${LDFLAGS} *********"
+		export LDFLAGS="-L/usr/lib64"
+		echo "********* LDFLAGS AFTER: ${LDFLAGS} *********"
+	fi
+	ARGS="OS=android NDKROOT=/sources/android_ndk TARGET=android-${ndk_levels[$arch]}"
+	ARGS="${ARGS} NDKLEVEL=${ndk_levels[$arch]} ARCH=$arch NDK_TOOLCHAIN_VERSION=clang"
+	/opt/gradle/latest/bin/gradle wrapper
+	make ${ARGS} clean
+	make ${ARGS} install
+done
 
 rm -rf /tmp/openh264
